@@ -41,12 +41,12 @@ impl Binary {
 
 impl PrettyPrint for Binary {
     fn pretty_print(&self) -> String {
-        return format!(
+        format!(
             "({} {} {})",
             self.operator.lexeme,
             self.left.pretty_print(),
             self.right.pretty_print(),
-        );
+        )
     }
 }
 
@@ -66,7 +66,7 @@ impl Unary {
 
 impl PrettyPrint for Unary {
     fn pretty_print(&self) -> String {
-        return format!("({} {})", self.operator.lexeme, self.right.pretty_print());
+        format!("({} {})", self.operator.lexeme, self.right.pretty_print())
     }
 }
 
@@ -82,7 +82,7 @@ impl Grouping {
 
 impl PrettyPrint for Grouping {
     fn pretty_print(&self) -> String {
-        return format!("(group {})", self.expression.pretty_print());
+        format!("(group {})", self.expression.pretty_print())
     }
 }
 
