@@ -5,49 +5,10 @@ use std::{
     process::exit,
 };
 
-use self::tree_walker::{
-    syntax_tree::{Binary, Expr, Grouping, Literal, PrettyPrint, Unary},
-    tokens::{LiteralType, Token, TokenType},
-};
-
 mod tree_walker;
 
 fn main() {
-    // let mut args = env::args().skip(1);
-
-    let left = Expr::Unary(Box::new(Unary::new(
-        Token {
-            r#type: TokenType::Minus,
-            lexeme: String::from("-"),
-            line: 1,
-            literal: None,
-        },
-        Expr::Literal(Literal::new(LiteralType::Number(123.0))),
-    )));
-
-    let op = Token {
-        r#type: TokenType::Star,
-        lexeme: String::from("*"),
-        line: 1,
-        literal: None,
-    };
-
-    let right = Expr::Grouping(Box::new(Grouping::new(Expr::Literal(Literal::new(
-        LiteralType::Number(45.67),
-    )))));
-
-    let e = Expr::Binary(Box::new(Binary::new(left, op, right)));
-
-    println!("{}", e.pretty_print());
-
-    // match args.len() {
-    //     0 => run_prompt(),
-    //     1 => run_file(args.next().take().unwrap()),
-    //     _ => {
-    //         println!("Usage: jlox [script]");
-    //         exit(64)
-    //     }
-    // }
+    run_file("./test_script.lox".to_string())
 }
 
 fn run_file(file_path: String) {
