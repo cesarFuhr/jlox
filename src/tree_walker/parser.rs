@@ -1,3 +1,5 @@
+use core::panicking::panic;
+
 use super::syntax_tree::{Binary, Expr, Grouping, Literal, Unary};
 use super::tokens::{LiteralType, Token, TokenType};
 
@@ -95,7 +97,7 @@ impl Parser {
 
         if self.r#match(vec![TokenType::LeftParen]) {
             let expr = self.expression();
-            //self.consume(TokenType::RightParen, "Expect ')' after expression");
+            self.consume(TokenType::RightParen, "Expect ')' after expression");
             return Expr::Grouping(Box::new(Grouping::new(expr)));
         }
 
@@ -113,11 +115,19 @@ impl Parser {
         false
     }
 
+    fn consume(&mut self, t: TokenType, message: String) -> Token {
+        if self.check(t) {
+            return self.advance();
+        }
+
+        panic(error(self.peek(), message))
+    }
+
     fn check(&mut self, t: TokenType) -> bool {
         if self.is_at_end() {
             return false;
         };
-        matches!(self.peek().r#type, t)
+        self.peek().r#type == t
     }
 
     fn advance(&mut self) -> Token {
