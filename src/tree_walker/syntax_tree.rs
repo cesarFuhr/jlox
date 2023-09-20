@@ -4,6 +4,7 @@ pub trait PrettyPrint {
     fn pretty_print(&self) -> String;
 }
 
+#[derive(PartialEq, PartialOrd, Debug)]
 pub enum Expr {
     Binary(Box<Binary>),
     Unary(Box<Unary>),
@@ -23,6 +24,7 @@ impl PrettyPrint for Expr {
     }
 }
 
+#[derive(PartialEq, PartialOrd, Debug)]
 pub struct Binary {
     left: Expr,
     operator: Token,
@@ -50,6 +52,7 @@ impl PrettyPrint for Binary {
     }
 }
 
+#[derive(PartialEq, PartialOrd, Debug)]
 pub struct Unary {
     operator: Token,
     right: Expr,
@@ -70,6 +73,7 @@ impl PrettyPrint for Unary {
     }
 }
 
+#[derive(PartialEq, PartialOrd, Debug)]
 pub struct Grouping {
     expression: Expr,
 }
@@ -86,6 +90,7 @@ impl PrettyPrint for Grouping {
     }
 }
 
+#[derive(PartialEq, PartialOrd, Debug)]
 pub struct Literal {
     value: Option<LiteralType>,
 }

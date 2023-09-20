@@ -215,3 +215,127 @@ impl Parser {
         ParseError { token, message }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use crate::tree_walker::scanner::Scanner;
+
+    use super::*;
+
+    #[test]
+    fn grouping_unary() {
+        let tokens = Scanner::new("(-1)".to_string()).scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let expected = Expr::Grouping(Box::new(Grouping::new(Expr::Unary(Box::new(Unary::new(
+            Token {
+                line: 1,
+                lexeme: "-".to_string(),
+                r#type: TokenType::Minus,
+                literal: None,
+            },
+            Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+        ))))));
+
+        assert_eq!(parser.parse().unwrap(), expected);
+    }
+
+    #[test]
+    fn grouping_plus() {
+        let tokens = Scanner::new("(1+1)".to_string()).scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let expected = Expr::Grouping(Box::new(Grouping::new(Expr::Binary(Box::new(
+            Binary::new(
+                Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+                Token {
+                    line: 1,
+                    lexeme: "+".to_string(),
+                    r#type: TokenType::Plus,
+                    literal: None,
+                },
+                Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+            ),
+        )))));
+
+        assert_eq!(parser.parse().unwrap(), expected);
+    }
+
+    #[test]
+    fn equality() {
+        let tokens = Scanner::new("1 == 1".to_string()).scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let expected = Expr::Binary(Box::new(Binary::new(
+            Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+            Token {
+                line: 1,
+                lexeme: "==".to_string(),
+                r#type: TokenType::EqualEqual,
+                literal: None,
+            },
+            Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+        )));
+
+        assert_eq!(parser.parse().unwrap(), expected);
+    }
+
+    #[test]
+    fn complex_grouping() {
+        let tokens = Scanner::new("(1+10)/10+2 < 10*2".to_string()).scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let expected = Expr::Binary(Box::new(Binary::new(
+            Expr::Binary(Box::new(Binary::new(
+                Expr::Binary(Box::new(Binary::new(
+                    Expr::Grouping(Box::new(Grouping::new(Expr::Binary(Box::new(
+                        Binary::new(
+                            Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+                            Token {
+                                line: 1,
+                                lexeme: "+".to_string(),
+                                r#type: TokenType::Plus,
+                                literal: None,
+                            },
+                            Expr::Literal(Literal::new(LiteralType::Number(10.0))),
+                        ),
+                    ))))),
+                    Token {
+                        line: 1,
+                        lexeme: "/".to_string(),
+                        r#type: TokenType::Slash,
+                        literal: None,
+                    },
+                    Expr::Literal(Literal::new(LiteralType::Number(10.0))),
+                ))),
+                Token {
+                    line: 1,
+                    lexeme: "+".to_string(),
+                    r#type: TokenType::Plus,
+                    literal: None,
+                },
+                Expr::Literal(Literal::new(LiteralType::Number(2.0))),
+            ))),
+            Token {
+                line: 1,
+                lexeme: "<".to_string(),
+                r#type: TokenType::Less,
+                literal: None,
+            },
+            Expr::Binary(Box::new(Binary::new(
+                Expr::Literal(Literal::new(LiteralType::Number(10.0))),
+                Token {
+                    line: 1,
+                    lexeme: "*".to_string(),
+                    r#type: TokenType::Star,
+                    literal: None,
+                },
+                Expr::Literal(Literal::new(LiteralType::Number(2.0))),
+            ))),
+        )));
+
+        let actual = parser.parse().unwrap();
+
+        assert_eq!(actual, expected);
+    }
+}
