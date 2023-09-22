@@ -28,7 +28,19 @@ impl Parser {
     }
 
     fn expression(&mut self) -> Result<Expr, ParseError> {
-        self.equality()
+        self.comma()
+    }
+
+    fn comma(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.equality()?;
+
+        while self.r#match(vec![TokenType::Comma]) {
+            let op = self.previous()?;
+            let right = self.equality()?;
+            expr = Expr::Binary(Box::new(Binary::new(expr, op, right)));
+        }
+
+        Ok(expr)
     }
 
     fn equality(&mut self) -> Result<Expr, ParseError> {
@@ -236,6 +248,61 @@ mod test {
             },
             Expr::Literal(Literal::new(LiteralType::Number(1.0))),
         ))))));
+
+        assert_eq!(parser.parse().unwrap(), expected);
+    }
+
+    #[test]
+    fn comma_separated_expressions() {
+        let tokens = Scanner::new("1+1,1-1,1==1".to_string()).scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let expected = Expr::Binary(Box::new(Binary::new(
+            Expr::Binary(Box::new(Binary::new(
+                Expr::Binary(Box::new(Binary::new(
+                    Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+                    Token {
+                        line: 1,
+                        lexeme: "+".to_string(),
+                        r#type: TokenType::Plus,
+                        literal: None,
+                    },
+                    Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+                ))),
+                Token {
+                    line: 1,
+                    lexeme: ",".to_string(),
+                    r#type: TokenType::Comma,
+                    literal: None,
+                },
+                Expr::Binary(Box::new(Binary::new(
+                    Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+                    Token {
+                        line: 1,
+                        lexeme: "-".to_string(),
+                        r#type: TokenType::Minus,
+                        literal: None,
+                    },
+                    Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+                ))),
+            ))),
+            Token {
+                line: 1,
+                lexeme: ",".to_string(),
+                r#type: TokenType::Comma,
+                literal: None,
+            },
+            Expr::Binary(Box::new(Binary::new(
+                Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+                Token {
+                    line: 1,
+                    lexeme: "==".to_string(),
+                    r#type: TokenType::EqualEqual,
+                    literal: None,
+                },
+                Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+            ))),
+        )));
 
         assert_eq!(parser.parse().unwrap(), expected);
     }
