@@ -6,6 +6,7 @@ pub trait PrettyPrint {
 
 #[derive(PartialEq, PartialOrd, Debug)]
 pub enum Expr {
+    Ternary(Box<Ternary>),
     Binary(Box<Binary>),
     Unary(Box<Unary>),
     Grouping(Box<Grouping>),
@@ -16,11 +17,40 @@ impl PrettyPrint for Expr {
     fn pretty_print(&self) -> String {
         use Expr::*;
         match *self {
+            Ternary(ref e) => e.pretty_print(),
             Binary(ref e) => e.pretty_print(),
             Unary(ref e) => e.pretty_print(),
             Grouping(ref e) => e.pretty_print(),
             Literal(ref e) => e.pretty_print(),
         }
+    }
+}
+
+#[derive(PartialEq, PartialOrd, Debug)]
+pub struct Ternary {
+    condition: Expr,
+    then: Expr,
+    r#else: Expr,
+}
+
+impl Ternary {
+    pub fn new(cond: Expr, th: Expr, el: Expr) -> Self {
+        Ternary {
+            condition: cond,
+            then: th,
+            r#else: el,
+        }
+    }
+}
+
+impl PrettyPrint for Ternary {
+    fn pretty_print(&self) -> String {
+        format!(
+            "(ternary {} ? {} : {})",
+            self.condition.pretty_print(),
+            self.then.pretty_print(),
+            self.r#else.pretty_print(),
+        )
     }
 }
 
@@ -32,7 +62,7 @@ pub struct Binary {
 }
 
 impl Binary {
-    pub fn new(l: Expr, op: Token, r: Expr) -> Binary {
+    pub fn new(l: Expr, op: Token, r: Expr) -> Self {
         Binary {
             left: l,
             operator: op,
@@ -59,7 +89,7 @@ pub struct Unary {
 }
 
 impl Unary {
-    pub fn new(op: Token, r: Expr) -> Unary {
+    pub fn new(op: Token, r: Expr) -> Self {
         Unary {
             operator: op,
             right: r,
@@ -79,7 +109,7 @@ pub struct Grouping {
 }
 
 impl Grouping {
-    pub fn new(e: Expr) -> Grouping {
+    pub fn new(e: Expr) -> Self {
         Grouping { expression: e }
     }
 }
@@ -96,7 +126,7 @@ pub struct Literal {
 }
 
 impl Literal {
-    pub fn new(v: LiteralType) -> Literal {
+    pub fn new(v: LiteralType) -> Self {
         Literal { value: Some(v) }
     }
 }
