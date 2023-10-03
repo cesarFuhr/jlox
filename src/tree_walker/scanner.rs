@@ -77,6 +77,7 @@ impl Scanner {
             ';' => self.add_token(TokenType::Semicolon, None),
             ':' => self.add_token(TokenType::Colon, None),
             '*' => self.add_token(TokenType::Star, None),
+            '?' => self.add_token(TokenType::Question, None),
             '!' => {
                 if self.next_matches('=') {
                     self.add_token(TokenType::BangEqual, None);
@@ -457,6 +458,35 @@ mod test {
                     lexeme: "123.45".to_string(),
                     line: 1,
                     literal: Some(LiteralType::Number(123.45)),
+                },
+                Token {
+                    r#type: TokenType::Eof,
+                    lexeme: "".to_string(),
+                    line: 1,
+                    literal: None,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn question_mark() {
+        let mut scanner = Scanner::new("123.45 ?".to_string());
+
+        assert_eq!(
+            scanner.scan_tokens(),
+            vec![
+                Token {
+                    r#type: TokenType::Number,
+                    lexeme: "123.45".to_string(),
+                    line: 1,
+                    literal: Some(LiteralType::Number(123.45)),
+                },
+                Token {
+                    r#type: TokenType::Question,
+                    lexeme: "?".to_string(),
+                    line: 1,
+                    literal: None,
                 },
                 Token {
                     r#type: TokenType::Eof,
