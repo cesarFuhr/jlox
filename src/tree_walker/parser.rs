@@ -1,5 +1,5 @@
 use super::errors::error;
-use super::syntax_tree::{Binary, Expr, Grouping, Literal, Unary};
+use super::syntax_tree::{Binary, Expr, Grouping, Literal, Ternary, Unary};
 use super::tokens::{LiteralType, Token, TokenType};
 
 #[derive(Debug)]
@@ -32,12 +32,34 @@ impl Parser {
     }
 
     fn comma(&mut self) -> Result<Expr, ParseError> {
-        let mut expr = self.equality()?;
+        let mut expr = self.ternary()?;
 
         while self.r#match(vec![TokenType::Comma]) {
             let op = self.previous()?;
-            let right = self.equality()?;
+            let right = self.ternary()?;
             expr = Expr::Binary(Box::new(Binary::new(expr, op, right)));
+        }
+
+        Ok(expr)
+    }
+
+    fn ternary(&mut self) -> Result<Expr, ParseError> {
+        let mut expr = self.equality()?;
+
+        while self.r#match(vec![TokenType::Question]) {
+            let condition = expr;
+            let then = self.ternary()?;
+
+            // Consume until we find a colon (should be only once).
+            // Should this be another while?
+            let _ = self.consume(
+                TokenType::Colon,
+                "Expect ':' after ternary condition.".to_string(),
+            );
+
+            let r#else = self.ternary()?;
+
+            expr = Expr::Ternary(Box::new(Ternary::new(condition, then, r#else)))
         }
 
         Ok(expr)
@@ -324,6 +346,74 @@ mod test {
                 Expr::Literal(Literal::new(LiteralType::Number(1.0))),
             ),
         )))));
+
+        assert_eq!(parser.parse().unwrap(), expected);
+    }
+
+    #[test]
+    fn ternary() {
+        let tokens = Scanner::new("1 == 1 ? 2 : 3".to_string()).scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let expected = Expr::Ternary(Box::new(Ternary::new(
+            Expr::Binary(Box::new(Binary::new(
+                Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+                Token {
+                    line: 1,
+                    lexeme: "==".to_string(),
+                    r#type: TokenType::EqualEqual,
+                    literal: None,
+                },
+                Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+            ))),
+            Expr::Literal(Literal::new(LiteralType::Number(2.0))),
+            Expr::Literal(Literal::new(LiteralType::Number(3.0))),
+        )));
+
+        assert_eq!(parser.parse().unwrap(), expected);
+    }
+
+    #[test]
+    fn ternary_complex() {
+        let tokens = Scanner::new("5 * 20 == 99 ? 10 : 3 < 2 ? 1 : 0".to_string()).scan_tokens();
+
+        let mut parser = Parser::new(tokens);
+        let expected = Expr::Ternary(Box::new(Ternary::new(
+            Expr::Binary(Box::new(Binary::new(
+                Expr::Binary(Box::new(Binary::new(
+                    Expr::Literal(Literal::new(LiteralType::Number(5.0))),
+                    Token {
+                        line: 1,
+                        lexeme: "*".to_string(),
+                        r#type: TokenType::Star,
+                        literal: None,
+                    },
+                    Expr::Literal(Literal::new(LiteralType::Number(20.0))),
+                ))),
+                Token {
+                    line: 1,
+                    lexeme: "==".to_string(),
+                    r#type: TokenType::EqualEqual,
+                    literal: None,
+                },
+                Expr::Literal(Literal::new(LiteralType::Number(99.0))),
+            ))),
+            Expr::Literal(Literal::new(LiteralType::Number(10.0))),
+            Expr::Ternary(Box::new(Ternary::new(
+                Expr::Binary(Box::new(Binary::new(
+                    Expr::Literal(Literal::new(LiteralType::Number(3.0))),
+                    Token {
+                        line: 1,
+                        lexeme: "<".to_string(),
+                        r#type: TokenType::Less,
+                        literal: None,
+                    },
+                    Expr::Literal(Literal::new(LiteralType::Number(2.0))),
+                ))),
+                Expr::Literal(Literal::new(LiteralType::Number(1.0))),
+                Expr::Literal(Literal::new(LiteralType::Number(0.0))),
+            ))),
+        )));
 
         assert_eq!(parser.parse().unwrap(), expected);
     }
