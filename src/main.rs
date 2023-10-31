@@ -8,7 +8,7 @@ use std::{
 mod tree_walker;
 
 fn main() {
-    run_file("./test_script.lox".to_string())
+    run_prompt()
 }
 
 fn run_file(file_path: String) {
@@ -62,6 +62,13 @@ fn run(source: String) -> Result<(), tree_walker::errors::Error> {
     let mut scanner = tree_walker::scanner::Scanner::new(source);
     let tokens = scanner.scan_tokens();
 
-    println!("{:?}", tokens);
+    let mut parser = tree_walker::parser::Parser::new(tokens);
+    let expression = parser.parse();
+
+    if expression.is_none() {
+        return Ok(());
+    }
+
+    tree_walker::syntax_tree::interpret(expression.unwrap());
     Ok(())
 }
