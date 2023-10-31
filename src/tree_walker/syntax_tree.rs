@@ -1,5 +1,6 @@
 use crate::tree_walker::tokens::{LiteralType, Token};
 
+use super::errors::RuntimeError;
 use super::tokens::TokenType;
 
 #[derive(PartialEq, PartialOrd, Debug)]
@@ -32,6 +33,7 @@ impl PrettyPrint for Expr {
     }
 }
 
+#[derive(Debug)]
 pub enum Value {
     Nil,
     Boolean(bool),
@@ -53,16 +55,26 @@ impl Value {
     }
 }
 
+pub fn interpret(expr: Expr) {
+    match expr.eval() {
+        Ok(value) => println!("{:?}", value),
+        Err(e) => e.report(),
+    }
+}
+
 pub trait Eval {
-    fn eval(&self) -> Value;
+    fn eval(&self) -> Result<Value, RuntimeError>;
 }
 
 impl Eval for Expr {
-    fn eval(&self) -> Value {
+    fn eval(&self) -> Result<Value, RuntimeError> {
         use Expr::*;
         match *self {
-            Literal(ref e) => e.eval(),
-            _ => Value::Nil,
+            Ternary(ref t) => t.eval(),
+            Binary(ref b) => b.eval(),
+            Unary(ref u) => u.eval(),
+            Grouping(ref g) => g.eval(),
+            Literal(ref l) => l.eval(),
         }
     }
 }
@@ -96,8 +108,8 @@ impl PrettyPrint for Ternary {
 }
 
 impl Eval for Ternary {
-    fn eval(&self) -> Value {
-        let condition = self.condition.eval();
+    fn eval(&self) -> Result<Value, RuntimeError> {
+        let condition = self.condition.eval()?;
 
         match condition {
             Value::Boolean(b) => {
@@ -106,10 +118,15 @@ impl Eval for Ternary {
                 }
                 self.r#else.eval()
             }
-            _ => {
-                println!("we shouldn't be here... condition didn't returned a boolean");
-                Value::Nil
-            }
+            _ => Err(RuntimeError::new(
+                Token {
+                    r#type: TokenType::Question,
+                    lexeme: "?".to_string(),
+                    literal: None,
+                    line: 0,
+                },
+                "We shouldn't be here... ternary condition didn't returned a boolean.".to_string(),
+            )),
         }
     }
 }
@@ -143,45 +160,54 @@ impl PrettyPrint for Binary {
 }
 
 impl Eval for Binary {
-    fn eval(&self) -> Value {
-        let left = self.left.eval();
-        let right = self.right.eval();
+    fn eval(&self) -> Result<Value, RuntimeError> {
+        let left = self.left.eval()?;
+        let right = self.right.eval()?;
 
         if !Value::variant_eq(&left, &right) {
-            println!("types don't match in binary expression");
-            return Value::Nil;
+            return Err(RuntimeError::new(
+                self.operator.to_owned(),
+                "Types don't match in binary expression.".to_string(),
+            ));
         }
 
         if let (Value::Number(l), Value::Number(r)) = (&left, &right) {
             match self.operator.r#type {
-                TokenType::Minus => return Value::Number(l - r),
-                TokenType::Slash => return Value::Number(l / r),
-                TokenType::Star => return Value::Number(l * r),
-                TokenType::Greater => return Value::Boolean(l > r),
-                TokenType::GreaterEqual => return Value::Boolean(l >= r),
-                TokenType::Less => return Value::Boolean(l < r),
-                TokenType::LessEqual => return Value::Boolean(l <= r),
-                TokenType::BangEqual => return Value::Boolean(!(l == r)),
-                TokenType::EqualEqual => return Value::Boolean(l == r),
+                TokenType::Plus => return Ok(Value::Number(l + r)),
+                TokenType::Minus => return Ok(Value::Number(l - r)),
+                TokenType::Slash => return Ok(Value::Number(l / r)),
+                TokenType::Star => return Ok(Value::Number(l * r)),
+                TokenType::Greater => return Ok(Value::Boolean(l > r)),
+                TokenType::GreaterEqual => return Ok(Value::Boolean(l >= r)),
+                TokenType::Less => return Ok(Value::Boolean(l < r)),
+                TokenType::LessEqual => return Ok(Value::Boolean(l <= r)),
+                TokenType::BangEqual => return Ok(Value::Boolean(!(l == r))),
+                TokenType::EqualEqual => return Ok(Value::Boolean(l == r)),
                 _ => {
-                    print!("invalid binary expression operator");
-                    return Value::Nil;
+                    return Err(RuntimeError::new(
+                        self.operator.to_owned(),
+                        "Invalid binary expression operator.".to_string(),
+                    ));
                 }
             }
         }
 
         if let (Value::String(l), Value::String(r)) = (&left, &right) {
             match self.operator.r#type {
-                TokenType::Plus => return Value::String(l.to_owned() + r),
+                TokenType::Plus => return Ok(Value::String(l.to_owned() + r)),
                 _ => {
-                    print!("invalid binary expression operator");
-                    return Value::Nil;
+                    return Err(RuntimeError::new(
+                        self.operator.to_owned(),
+                        "Invalid binary expression operator.".to_string(),
+                    ));
                 }
             }
         }
 
-        print!("invalid binary expression");
-        Value::Nil
+        Err(RuntimeError::new(
+            self.operator.to_owned(),
+            "Invalid binary expression operator.".to_string(),
+        ))
     }
 }
 
@@ -207,19 +233,22 @@ impl PrettyPrint for Unary {
 }
 
 impl Eval for Unary {
-    fn eval(&self) -> Value {
-        let right = self.right.eval();
+    fn eval(&self) -> Result<Value, RuntimeError> {
+        let right = self.right.eval()?;
 
         match self.operator.r#type {
-            TokenType::Bang => Value::Boolean(!right.is_truthy()),
+            TokenType::Bang => Ok(Value::Boolean(!right.is_truthy())),
             TokenType::Minus => match right {
-                Value::Number(n) => Value::Number(-n),
-                _ => panic!("minus should be only used in a number"),
+                Value::Number(n) => Ok(Value::Number(-n)),
+                _ => Err(RuntimeError::new(
+                    self.operator.to_owned(),
+                    "Minus should only be used with the number type.".to_string(),
+                )),
             },
-            _ => {
-                print!("we shouldn't be here...");
-                Value::Nil
-            }
+            _ => Err(RuntimeError::new(
+                self.operator.to_owned(),
+                "Invalid operator in unary expression.".to_string(),
+            )),
         }
     }
 }
@@ -242,7 +271,7 @@ impl PrettyPrint for Grouping {
 }
 
 impl Eval for Grouping {
-    fn eval(&self) -> Value {
+    fn eval(&self) -> Result<Value, RuntimeError> {
         self.expression.eval()
     }
 }
@@ -268,12 +297,12 @@ impl PrettyPrint for Literal {
 }
 
 impl Eval for Literal {
-    fn eval(&self) -> Value {
-        match self.value.to_owned().unwrap_or(LiteralType::Nil) {
+    fn eval(&self) -> Result<Value, RuntimeError> {
+        Ok(match self.value.to_owned().unwrap_or(LiteralType::Nil) {
             LiteralType::Number(v) => Value::Number(v),
             LiteralType::String(v) => Value::String(v),
             LiteralType::Bool(v) => Value::Boolean(v),
             LiteralType::Nil => Value::Nil,
-        }
+        })
     }
 }

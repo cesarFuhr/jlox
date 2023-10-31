@@ -27,3 +27,21 @@ pub fn error(token: &Token, message: &String) {
     };
     report(e)
 }
+
+pub struct RuntimeError {
+    token: Token,
+    message: String,
+}
+
+impl RuntimeError {
+    pub fn new(token: Token, message: String) -> Self {
+        Self { token, message }
+    }
+
+    pub fn report(&self) {
+        println!(
+            "{} \n[token {}]\n[line {}]",
+            self.message, self.token.lexeme, self.token.line
+        )
+    }
+}

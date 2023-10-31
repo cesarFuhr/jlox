@@ -3,7 +3,7 @@ use super::syntax_tree::{Binary, Expr, Grouping, Literal, Ternary, Unary};
 use super::tokens::{LiteralType, Token, TokenType};
 
 #[derive(Debug)]
-struct Parser {
+pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
 }
@@ -15,7 +15,7 @@ pub struct ParseError {
 }
 
 impl Parser {
-    fn new(tokens: Vec<Token>) -> Parser {
+    pub fn new(tokens: Vec<Token>) -> Parser {
         Parser { tokens, current: 0 }
     }
 
