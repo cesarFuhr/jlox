@@ -181,7 +181,7 @@ impl Eval for Binary {
                 TokenType::GreaterEqual => return Ok(Value::Boolean(l >= r)),
                 TokenType::Less => return Ok(Value::Boolean(l < r)),
                 TokenType::LessEqual => return Ok(Value::Boolean(l <= r)),
-                TokenType::BangEqual => return Ok(Value::Boolean(!(l == r))),
+                TokenType::BangEqual => return Ok(Value::Boolean(l != r)),
                 TokenType::EqualEqual => return Ok(Value::Boolean(l == r)),
                 _ => {
                     return Err(RuntimeError::new(
@@ -195,6 +195,25 @@ impl Eval for Binary {
         if let (Value::String(l), Value::String(r)) = (&left, &right) {
             match self.operator.r#type {
                 TokenType::Plus => return Ok(Value::String(l.to_owned() + r)),
+                TokenType::Greater => return Ok(Value::Boolean(l > r)),
+                TokenType::GreaterEqual => return Ok(Value::Boolean(l >= r)),
+                TokenType::Less => return Ok(Value::Boolean(l < r)),
+                TokenType::LessEqual => return Ok(Value::Boolean(l <= r)),
+                TokenType::BangEqual => return Ok(Value::Boolean(l != r)),
+                TokenType::EqualEqual => return Ok(Value::Boolean(l == r)),
+                _ => {
+                    return Err(RuntimeError::new(
+                        self.operator.to_owned(),
+                        "Invalid binary expression operator.".to_string(),
+                    ));
+                }
+            }
+        }
+
+        if let (Value::Boolean(l), Value::Boolean(r)) = (&left, &right) {
+            match self.operator.r#type {
+                TokenType::BangEqual => return Ok(Value::Boolean(l != r)),
+                TokenType::EqualEqual => return Ok(Value::Boolean(l == r)),
                 _ => {
                     return Err(RuntimeError::new(
                         self.operator.to_owned(),
